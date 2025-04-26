@@ -10,45 +10,47 @@ import pytesseract
 from pdf2image import convert_from_bytes
 
 # ---------------------------------------------------
-# Load Firebase credentials from Streamlit secrets
-def get_firebase_app_and_bucket():
-    firebase_secrets = st.secrets["firebase"]
-    # Normalize private key newlines
-    private_key = firebase_secrets["private_key"].replace("\\n", "\n")
-    cred_dict = {
-        "type": firebase_secrets["type"],
-        "project_id": firebase_secrets["project_id"],
-        "private_key_id": firebase_secrets["private_key_id"],
-        "private_key": private_key,
-        "client_email": firebase_secrets["client_email"],
-        "client_id": firebase_secrets["client_id"],
-        "auth_uri": firebase_secrets["auth_uri"],
-        "token_uri": firebase_secrets["token_uri"],
-        "auth_provider_x509_cert_url": firebase_secrets["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": firebase_secrets["client_x509_cert_url"]
-    }
-    bucket_name = firebase_secrets.get("storage_bucket")
-    if not firebase_admin._apps:
-        if bucket_name:
-            firebase_admin.initialize_app(
-                credentials.Certificate(cred_dict),
-                {"storageBucket": bucket_name}
-            )
-        else:
-            firebase_admin.initialize_app(credentials.Certificate(cred_dict))
-    app = firebase_admin.get_app()
-    return app, bucket_name
+# Load Firebase credentials from Streamlit secrets and infer storage bucket
+firebase_secrets = st.secrets.get("firebase", {})
+if not firebase_secrets:
+    st.error("⚠️ Missing 'firebase' section in st.secrets. Please add your Firebase credentials under [firebase].")
+    st.stop()
 
-# Initialize Firebase and get bucket name
-app, bucket_name = get_firebase_app_and_bucket()
+# Normalize private key newlines
+private_key = firebase_secrets.get("private_key", "").replace("\\n", "\n")
+
+cred_dict = {
+    "type": firebase_secrets.get("type"),
+    "project_id": firebase_secrets.get("project_id"),
+    "private_key_id": firebase_secrets.get("private_key_id"),
+    "private_key": private_key,
+    "client_email": firebase_secrets.get("client_email"),
+    "client_id": firebase_secrets.get("client_id"),
+    "auth_uri": firebase_secrets.get("auth_uri"),
+    "token_uri": firebase_secrets.get("token_uri"),
+    "auth_provider_x509_cert_url": firebase_secrets.get("auth_provider_x509_cert_url"),
+    "client_x509_cert_url": firebase_secrets.get("client_x509_cert_url")
+}
+
+# Determine storage bucket: use explicit secret or default to <project_id>.appspot.com
+project_id = firebase_secrets.get("project_id")
+storage_bucket = firebase_secrets.get("storage_bucket") or f"{project_id}.appspot.com"
+
+# Initialize Firebase with storageBucket
+if not firebase_admin._apps:
+    try:
+        firebase_admin.initialize_app(
+            credentials.Certificate(cred_dict),
+            {"storageBucket": storage_bucket}
+        )
+    except Exception as e:
+        st.error(f"Failed to initialize Firebase: {e}")
+        st.stop()
 
 # Firestore client
-db = firestore.client(app)
-# Storage bucket (explicit)
-if not bucket_name:
-    st.error("⚠️ Missing storage_bucket in st.secrets['firebase']")
-    st.stop()
-bucket = storage.bucket(bucket_name, app=app)
+db = firestore.client()
+# Storage bucket
+bucket = storage.bucket()
 # ---------------------------------------------------
 
 st.set_page_config(page_title="Gate Pass Application", layout="centered")
@@ -84,7 +86,7 @@ def ocr_check(file_bytes):
     try:
         images = convert_from_bytes(file_bytes)
         text = pytesseract.image_to_string(images[0])
-    except:
+    except Exception:
         image = Image.open(io.BytesIO(file_bytes))
         text = pytesseract.image_to_string(image)
     return len(text.strip()) > 50
@@ -110,7 +112,7 @@ if st.button("Submit"):
         if not check_white_bg(img):
             st.error("Passport photo background must be white.")
             st.stop()
-    except:
+    except Exception:
         pass
 
     # Validate Aadhar
@@ -145,7 +147,7 @@ if st.button("Submit"):
         student_img.save(student_buffer, format="PNG")
         student_buffer.seek(0)
         c.drawImage(student_buffer, 50, height-250, width=100, height=100)
-    except:
+    except Exception:
         pass
     c.drawString(200, height-150, f"Name: {name}")
     c.drawString(200, height-170, f"Registration No: {reg_no}")
