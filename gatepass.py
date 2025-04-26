@@ -64,7 +64,7 @@ phone = st.text_input("Phone Number")
 email = st.text_input("Email ID")
 
 # File upload and validation (100–500 KB enforced via code)
-def validate_file(file, min_kb=100, max_kb=500):
+def validate_file(file, min_kb=40, max_kb=500):
     size_kb = len(file.read()) / 1024
     file.seek(0)
     if size_kb < min_kb or size_kb > max_kb:
