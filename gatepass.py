@@ -11,7 +11,7 @@ from pdf2image import convert_from_bytes
 
 # ---------------------------------------------------
 # Display user-visible limit information
-st.caption("**Note:** Maximum file size per upload is 500 KB.")
+st.caption("**Note:** Maximum file size per upload is 500 KB.")
 
 # Load Firebase credentials from Streamlit secrets and infer storage bucket
 firebase_secrets = st.secrets.get("firebase", {})
@@ -155,7 +155,9 @@ if st.button("Submit"):
         pass
     c.drawString(200, height-150, f"Name: {name}")
     c.drawString(200, height-170, f"Registration No: {reg_no}")
-    c.drawImage(qr_buffer, 50, height-350, width=100, height=100)
+    c.drawString(200, height-190, f"Phone: {phone}")
+    c.drawString(200, height-210, f"Email: {email}")
+    c.drawImage(qr_buffer, 50, height-400, width=100, height=100)
     c.showPage()
     c.save()
     pdf_buffer.seek(0)
