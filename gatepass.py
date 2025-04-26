@@ -1,4 +1,5 @@
 import streamlit as st
+st.set_page_config(page_title="Gate Pass Application", layout="centered")
 from PIL import Image
 import io
 import firebase_admin
@@ -55,8 +56,6 @@ db = firestore.client()
 # Storage bucket
 bucket = storage.bucket()
 # ---------------------------------------------------
-
-st.set_page_config(page_title="Gate Pass Application", layout="centered")
 st.title("Gate Pass for Drone Workshop")
 st.subheader("Skill Stork International School in collaboration with Aerofoil Innovations Pvt Ltd")
 
