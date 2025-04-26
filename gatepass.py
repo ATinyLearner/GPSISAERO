@@ -10,6 +10,9 @@ import pytesseract
 from pdf2image import convert_from_bytes
 
 # ---------------------------------------------------
+# Display user-visible limit information
+st.caption("**Note:** Maximum file size per upload is 500 KB.")
+
 # Load Firebase credentials from Streamlit secrets and infer storage bucket
 firebase_secrets = st.secrets.get("firebase", {})
 if not firebase_secrets:
@@ -63,7 +66,7 @@ reg_no = st.text_input("Registration Number")
 phone = st.text_input("Phone Number")
 email = st.text_input("Email ID")
 
-# File upload and validation
+# File upload and validation (100–500 KB enforced via code)
 def validate_file(file, min_kb=100, max_kb=500):
     size_kb = len(file.read()) / 1024
     file.seek(0)
@@ -91,8 +94,9 @@ def ocr_check(file_bytes):
         text = pytesseract.image_to_string(image)
     return len(text.strip()) > 50
 
-passport_file = st.file_uploader("Upload Passport Photo or PDF (white background)", type=["png","jpg","jpeg","pdf"])
-aadhar_file = st.file_uploader("Upload Aadhar Card Photo or PDF", type=["png","jpg","jpeg","pdf"])
+# Uploaders: indicate the 500 KB limit in labels
+passport_file = st.file_uploader("Passport Photo/PDF (white background, ≤500 KB)", type=["png","jpg","jpeg","pdf"])
+aadhar_file = st.file_uploader("Aadhar Photo/PDF (clear text, ≤500 KB)", type=["png","jpg","jpeg","pdf"])
 
 if st.button("Submit"):
     # Ensure all inputs are provided
