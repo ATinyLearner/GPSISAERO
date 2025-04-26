@@ -11,8 +11,6 @@ import pytesseract
 from pdf2image import convert_from_bytes
 
 # ---------------------------------------------------
-# Display user-visible limit information
-st.caption("**Note:** Maximum file size per upload is 500 KB.")
 
 # Load Firebase credentials from Streamlit secrets and infer storage bucket
 firebase_secrets = st.secrets.get("firebase", {})
