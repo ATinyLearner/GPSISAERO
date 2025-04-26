@@ -11,29 +11,39 @@ from pdf2image import convert_from_bytes
 
 # ---------------------------------------------------
 # Load Firebase credentials from Streamlit secrets
-firebase_secrets = st.secrets["firebase"]
-
-# Initialize Firebase if not already initialized
-if not firebase_admin._apps:
-    cred = credentials.Certificate({
+def get_firebase_app():
+    firebase_secrets = st.secrets["firebase"]
+    # Normalize private key newlines
+    private_key = firebase_secrets["private_key"].replace("\\n", "\n")
+    cred_dict = {
         "type": firebase_secrets["type"],
         "project_id": firebase_secrets["project_id"],
         "private_key_id": firebase_secrets["private_key_id"],
-        "private_key": firebase_secrets["private_key"].replace("\\n", "\n"),
+        "private_key": private_key,
         "client_email": firebase_secrets["client_email"],
         "client_id": firebase_secrets["client_id"],
         "auth_uri": firebase_secrets["auth_uri"],
         "token_uri": firebase_secrets["token_uri"],
         "auth_provider_x509_cert_url": firebase_secrets["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": firebase_secrets["client_x509_cert_url"],
-    })
-    firebase_admin.initialize_app(cred)
+        "client_x509_cert_url": firebase_secrets["client_x509_cert_url"]
+    }
+    # Initialize app with storage bucket
+    bucket_name = firebase_secrets.get("storage_bucket")
+    if not firebase_admin._apps:
+        if bucket_name:
+            firebase_admin.initialize_app(credentials.Certificate(cred_dict), {
+                "storageBucket": bucket_name
+            })
+        else:
+            firebase_admin.initialize_app(credentials.Certificate(cred_dict))
+    return firebase_admin.get_app()
 
-# Get Firestore client
-db = firestore.client()
-
-# Get default storage bucket
-bucket = storage.bucket()
+# Ensure Firebase app is initialized
+app = get_firebase_app()
+# Firestore client
+db = firestore.client(app)
+# Storage bucket (default)
+bucket = storage.bucket(app=app)
 # ---------------------------------------------------
 
 st.set_page_config(page_title="Gate Pass Application", layout="centered")
@@ -83,14 +93,13 @@ if st.button("Submit"):
         st.error("Please fill all fields and upload both files.")
         st.stop()
 
-    # Validate passport file size
+    # Validate passport
     valid, msg = validate_file(passport_file)
     if not valid:
         st.error(f"Passport Error: {msg}")
         st.stop()
     passport_bytes = passport_file.read()
     passport_file.seek(0)
-    # White background check for images (skips for PDFs)
     try:
         img = Image.open(io.BytesIO(passport_bytes)).convert("RGB")
         if not check_white_bg(img):
@@ -99,14 +108,13 @@ if st.button("Submit"):
     except:
         pass
 
-    # Validate Aadhar file size
+    # Validate Aadhar
     valid, msg = validate_file(aadhar_file)
     if not valid:
         st.error(f"Aadhar Error: {msg}")
         st.stop()
     aadhar_bytes = aadhar_file.read()
     aadhar_file.seek(0)
-    # OCR clarity check
     if not ocr_check(aadhar_bytes):
         st.error("Aadhar details not clear. Please upload a clearer image.")
         st.stop()
