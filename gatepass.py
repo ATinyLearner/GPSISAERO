@@ -11,7 +11,7 @@ from pdf2image import convert_from_bytes
 
 # ---------------------------------------------------
 # Load Firebase credentials from Streamlit secrets
-def get_firebase_app():
+def get_firebase_app_and_bucket():
     firebase_secrets = st.secrets["firebase"]
     # Normalize private key newlines
     private_key = firebase_secrets["private_key"].replace("\\n", "\n")
@@ -27,23 +27,28 @@ def get_firebase_app():
         "auth_provider_x509_cert_url": firebase_secrets["auth_provider_x509_cert_url"],
         "client_x509_cert_url": firebase_secrets["client_x509_cert_url"]
     }
-    # Initialize app with storage bucket
     bucket_name = firebase_secrets.get("storage_bucket")
     if not firebase_admin._apps:
         if bucket_name:
-            firebase_admin.initialize_app(credentials.Certificate(cred_dict), {
-                "storageBucket": bucket_name
-            })
+            firebase_admin.initialize_app(
+                credentials.Certificate(cred_dict),
+                {"storageBucket": bucket_name}
+            )
         else:
             firebase_admin.initialize_app(credentials.Certificate(cred_dict))
-    return firebase_admin.get_app()
+    app = firebase_admin.get_app()
+    return app, bucket_name
 
-# Ensure Firebase app is initialized
-app = get_firebase_app()
+# Initialize Firebase and get bucket name
+app, bucket_name = get_firebase_app_and_bucket()
+
 # Firestore client
 db = firestore.client(app)
-# Storage bucket (default)
-bucket = storage.bucket(app=app)
+# Storage bucket (explicit)
+if not bucket_name:
+    st.error("⚠️ Missing storage_bucket in st.secrets['firebase']")
+    st.stop()
+bucket = storage.bucket(bucket_name, app=app)
 # ---------------------------------------------------
 
 st.set_page_config(page_title="Gate Pass Application", layout="centered")
