@@ -9,17 +9,32 @@ from reportlab.lib.pagesizes import A4
 import pytesseract
 from pdf2image import convert_from_bytes
 
+# ---------------------------------------------------
+# Load Firebase credentials from Streamlit secrets
+firebase_secrets = st.secrets["firebase"]
 
-# Initialize Firebase using Streamlit secrets
-firebase_creds = st.secrets["firebase"]
+# Initialize Firebase if not already initialized
 if not firebase_admin._apps:
-    cred = credentials.Certificate(firebase_creds)
-    firebase_admin.initialize_app(cred, {
-        "storageBucket": firebase_creds["storage_bucket"]
+    cred = credentials.Certificate({
+        "type": firebase_secrets["type"],
+        "project_id": firebase_secrets["project_id"],
+        "private_key_id": firebase_secrets["private_key_id"],
+        "private_key": firebase_secrets["private_key"].replace("\\n", "\n"),
+        "client_email": firebase_secrets["client_email"],
+        "client_id": firebase_secrets["client_id"],
+        "auth_uri": firebase_secrets["auth_uri"],
+        "token_uri": firebase_secrets["token_uri"],
+        "auth_provider_x509_cert_url": firebase_secrets["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": firebase_secrets["client_x509_cert_url"],
     })
+    firebase_admin.initialize_app(cred)
 
+# Get Firestore client
 db = firestore.client()
+
+# Get default storage bucket
 bucket = storage.bucket()
+# ---------------------------------------------------
 
 st.set_page_config(page_title="Gate Pass Application", layout="centered")
 st.title("Gate Pass for Drone Workshop")
@@ -32,7 +47,6 @@ phone = st.text_input("Phone Number")
 email = st.text_input("Email ID")
 
 # File upload and validation
-# Ensures files are between 100 KB and 500 KB
 def validate_file(file, min_kb=100, max_kb=500):
     size_kb = len(file.read()) / 1024
     file.seek(0)
